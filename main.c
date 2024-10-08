@@ -19,11 +19,27 @@ void GPIO_INIT()
 
 }
 
+void GPIO_PORTF_INIT(void)
+{
+    SYSCTL_RCGCGPIO_R |= 0x20;  //enable clock to portf
 
-int UART_TxRx(int data)
+   /* GPIO_PORTF_LOCK_R = 0X4C4F434B;
+    GPIO_PORTF_CR_R = 0X1F;*/
+
+    GPIO_PORTF_DIR_R = 0x0E;    //set correct directions
+
+    GPIO_PORTF_DEN_R = 0x1F;    //enable digital operation at pins
+    GPIO_PORTF_PUR_R = 0x11;    //enable pullups for switches
+
+
+
+}
+
+
+void UART_INIT(void)
 {
 
-    int ret;    // return variable
+
     /*
      *
      *  clock Regs..............
@@ -69,7 +85,7 @@ int UART_TxRx(int data)
         UART0_LCRH_R = 0xE2;    // odd parity-one stop bit-fifo dis-8bit len-checkparity as 1
 
 
-        UART0_CTL_R = 0x311;      // UARTEN is enabled, EOT is set ... sys_clk/16, TxRx enabled  //
+        UART0_CTL_R = 0x391;      // UARTEN is enabled, EOT is set ...loopback en, sys_clk/16, TxRx enabled  //
 
 
     /*  Using UART0 for Transmitting operation
@@ -84,25 +100,28 @@ int UART_TxRx(int data)
     GPIO_PORTA_PCTL_R  = 0x03;  // encoding is 1 for UART0, PMC.... setting 1
 
 
+}
 
-    if((UART0_FR_R & (1<<5)) == 1)
-        UART0_DR_R = data;
+void send(int data){
 
-
-
-    if((UART0_FR_R & !(1<<4)) == 0)
-        ret = UART0_DR_R;
-
-
-
-    return ret;
-
+        while((UART0_FR_R & (1<<5)) == 1);
+            UART0_DR_R = data;
 
 }
 
 
 
+int rece(void){
 
+
+        while((UART0_FR_R & (1<<4)) == 0);
+        return  UART0_DR_R;
+
+
+
+
+
+}
 void main()
 {
     /* 0x0F ---> sw1
@@ -110,13 +129,18 @@ void main()
      * 0xAA ---->sw2
      * */
 
-    int data = 0xA6;
     int des;
 
     GPIO_INIT();
 
-    des = UART_TxRx(data);
+    UART_INIT();
 
+    send(0xA6);
+    des = rece();
+
+    GPIO_PORTF_INIT();
+    if(des == 0xA6)
+        GPIO_PORTF_DATA_R = 0x0E;
 
 
     while(1);
