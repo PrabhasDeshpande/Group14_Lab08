@@ -85,7 +85,7 @@ void UART_INIT(void)
         UART0_LCRH_R = 0xE2;    // odd parity-one stop bit-fifo dis-8bit len-checkparity as 1
 
 
-        UART0_CTL_R = 0x391;      // UARTEN is enabled, EOT is set ...loopback en, sys_clk/16, TxRx enabled  //
+        UART0_CTL_R = 0x391;      // UARTEN is enabled, EOT is set ...loopback dis, sys_clk/16, TxRx enabled  //
 
 
     /*  Using UART0 for Transmitting operation
@@ -104,7 +104,7 @@ void UART_INIT(void)
 
 void send(int data){
 
-        while((UART0_FR_R & (1<<5)) == 1);
+        while((UART0_FR_R & (1<<5)) != 0);
             UART0_DR_R = data;
 
 }
@@ -114,7 +114,7 @@ void send(int data){
 int rece(void){
 
 
-        while((UART0_FR_R & (1<<4)) == 0);
+        while((UART0_FR_R & (1<<5)) != 0);
         return  UART0_DR_R;
 
 
