@@ -23,8 +23,8 @@ void GPIO_PORTF_INIT(void)
 {
     SYSCTL_RCGCGPIO_R |= 0x20;  //enable clock to portf
 
-   /* GPIO_PORTF_LOCK_R = 0X4C4F434B;
-    GPIO_PORTF_CR_R = 0X1F;*/
+    GPIO_PORTF_LOCK_R = 0X4C4F434B;
+    GPIO_PORTF_CR_R = 0X1F;
 
     GPIO_PORTF_DIR_R = 0x0E;    //set correct directions
 
@@ -47,11 +47,12 @@ void UART_INIT(void)
      *  UARTCTL....set to zero then set to 1 after configuration
      */
 
-        SYSCTL_RCGCUART_R = 0x01;   // choose  UART0
+        /* SYSCTL_RCGCUART_R = 0x01;   // choose  UART0 ALREADY CHOOSEN IN MAIN FXN AS ITS CREATES STEP OVER PROBLEM
         UART0_CC_R = 0x0;           // system clock source // check for delayed enable....?
         UART0_CTL_R = 0x00;      // UARTEN is disabled..
 
-     /*
+
+    /*
      *  control Regs...................
      *  UARTRSR/ECR
         UARTFR
@@ -114,8 +115,9 @@ void send(int data){
 int rece(void){
 
 
-        while((UART0_FR_R & (1<<5)) != 0);
-        return  UART0_DR_R;
+        while((UART0_FR_R & (1<<4)) != 0);
+            return  UART0_DR_R;
+
 
 
 
@@ -129,20 +131,56 @@ void main()
      * 0xAA ---->sw2
      * */
 
-    int des;
+    int des,data = 0x00;
+
+    SYSCTL_RCGCGPIO_R |= 0x20;  //enable clock to portf
+    SYSCTL_RCGCGPIO_R |= 0x01;  //enable clock to portA
+    SYSCTL_RCGCUART_R = 0x01;   // choose  UART0
 
     GPIO_INIT();
-
+    GPIO_PORTF_INIT();
     UART_INIT();
 
-    send(0xA6);
-    des = rece();
 
-    GPIO_PORTF_INIT();
-    if(des == 0xA6)
-        GPIO_PORTF_DATA_R = 0x0E;
+    while(1){
+
+    /*add code for switch press condiotions : input : can also done using interrupt : try later*/
+
+        if((GPIO_PORTF_DATA_R & (1<<0)) == 0)
+        {
+
+            data = 0xAA;    // when sw2 is pressed
 
 
-    while(1);
+        }
+
+        if((GPIO_PORTF_DATA_R & (1<<4)) == 0)
+        {
+
+            data = 0xF0;    // when sw1 is pressed
+
+
+        }
+
+
+    /*add code for switch press condiotions : input*/
+
+    send(data);     // input
+    des = rece();   // output
+
+
+    /* below part added for conditions after signal is received*/
+
+    if(des == 0xAA)
+        GPIO_PORTF_DATA_R = 0x08; // green color
+
+    if(des == 0xF0)
+        GPIO_PORTF_DATA_R = 0x04; // blue color
+
+    /*if(des != 0xAA && des != 0xF0 )
+        GPIO_PORTF_DATA_R = 0x02; // red color*/
+
+
+    }
 
 }
