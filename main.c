@@ -4,18 +4,20 @@
 #include <tm4c123gh6pm.h>
 
 
+
 void GPIO_INIT()
 {
 
-        SYSCTL_RCGCGPIO_R |= 0x01;  //enable clock to portA
+        SYSCTL_RCGCGPIO_R |= 0x10;  //enable clock to portE
 
-       //GPIO_PORTA_LOCK_R = 0X4C4F434B;
-       //GPIO_PORTA_CR_R = 0X1F;
+       //GPIO_PORTE_LOCK_R = 0X4C4F434B;
+       //GPIO_PORTE_CR_R = 0X1F;
 
-       GPIO_PORTA_DIR_R = 0x0E;    //set correct directions
+      // GPIO_PORTE_DIR_R = 0x0E;    //set correct directions
 
-       GPIO_PORTA_DEN_R = 0x1F;    //enable digital operation at pins
-       GPIO_PORTA_PUR_R = 0x11;    //enable pullups for switches
+       GPIO_PORTE_DEN_R = 0x30;    //enable TxRx operation at pins
+
+       //GPIO_PORTE_PUR_R = 0x11;    //enable pullups for switches
 
 }
 
@@ -47,9 +49,10 @@ void UART_INIT(void)
      *  UARTCTL....set to zero then set to 1 after configuration
      */
 
-        /* SYSCTL_RCGCUART_R = 0x01;   // choose  UART0 ALREADY CHOOSEN IN MAIN FXN AS ITS CREATES STEP OVER PROBLEM
-        UART0_CC_R = 0x0;           // system clock source // check for delayed enable....?
-        UART0_CTL_R = 0x00;      // UARTEN is disabled..
+        //SYSCTL_RCGCUART_R = 0x20;   // choose  UART5 ALREADY CHOOSEN IN MAIN FXN AS ITS CREATES STEP OVER PROBLEM
+
+        UART5_CC_R = 0x0;           // system clock source // check for delayed enable....?
+        UART5_CTL_R = 0x00;      // UARTEN is disabled..
 
 
     /*
@@ -81,32 +84,32 @@ void UART_INIT(void)
          *
          *
          */
-        UART0_IBRD_R = 104;
-        UART0_FBRD_R = 11;
-        UART0_LCRH_R = 0xE2;    // odd parity-one stop bit-fifo dis-8bit len-checkparity as 1
+        UART5_IBRD_R = 104;
+        UART5_FBRD_R = 11;
+        UART5_LCRH_R = 0xE2;    // odd parity-one stop bit-fifo dis-8bit len-checkparity as 1
 
 
-        UART0_CTL_R = 0x391;      // UARTEN is enabled, EOT is set ...loopback dis, sys_clk/16, TxRx enabled  //
+        UART5_CTL_R = 0x391;      // UARTEN is enabled, EOT is set ...loopback dis, sys_clk/16, TxRx enabled  //
 
 
-    /*  Using UART0 for Transmitting operation
+    /*  Using UART5 for Transmitting operation
      *
-     * PA0----->Tx
-     * PA1----->Rx
+     * PE5----->Tx
+     * PE4----->Rx
      *
      *
      * */
 
-    GPIO_PORTA_AFSEL_R = 0x03;  // UART is enabled on PA0 and PA1
-    GPIO_PORTA_PCTL_R  = 0x03;  // encoding is 1 for UART0, PMC.... setting 1
-
+    GPIO_PORTE_AFSEL_R = 0x30;  // UART is enabled on PE4 and PE5
+    GPIO_PORTE_PCTL_R  = 0x30;  // encoding is 0x30 for UART5
+    GPIO_PORTE_AMSEL_R = 0x00;    // no analog functions
 
 }
 
 void send(int data){
 
-        while((UART0_FR_R & (1<<5)) != 0);
-            UART0_DR_R = data;
+        while((UART5_FR_R & (1<<5)) != 0);
+            UART5_DR_R = data;
 
 }
 
@@ -115,8 +118,8 @@ void send(int data){
 int rece(void){
 
 
-        while((UART0_FR_R & (1<<4)) != 0);
-            return  UART0_DR_R;
+        while((UART5_FR_R & (1<<4)) != 0);
+            return  UART5_DR_R;
 
 
 
@@ -131,11 +134,11 @@ void main()
      * 0xAA ---->sw2
      * */
 
-    int des,data = 0x00;
+    int count,des,data = 0x00;
 
     SYSCTL_RCGCGPIO_R |= 0x20;  //enable clock to portf
-    SYSCTL_RCGCGPIO_R |= 0x01;  //enable clock to portA
-    SYSCTL_RCGCUART_R = 0x01;   // choose  UART0
+    SYSCTL_RCGCGPIO_R |= 0x10;  //enable clock to portE
+    SYSCTL_RCGCUART_R = 0x20;   // choose  UART5
 
     GPIO_INIT();
     GPIO_PORTF_INIT();
@@ -144,12 +147,14 @@ void main()
 
     while(1){
 
+        count = 0;
     /*add code for switch press condiotions : input : can also done using interrupt : try later*/
 
         if((GPIO_PORTF_DATA_R & (1<<0)) == 0)
         {
 
             data = 0xAA;    // when sw2 is pressed
+            count  = 1;
 
 
         }
@@ -158,6 +163,7 @@ void main()
         {
 
             data = 0xF0;    // when sw1 is pressed
+            count = 1;
 
 
         }
@@ -177,8 +183,8 @@ void main()
     if(des == 0xF0)
         GPIO_PORTF_DATA_R = 0x04; // blue color
 
-    /*if(des != 0xAA && des != 0xF0 )
-        GPIO_PORTF_DATA_R = 0x02; // red color*/
+    if(des != 0xAA && des != 0xF0 && count) // count is used to unkown results only when switches are pressed.
+        GPIO_PORTF_DATA_R = 0x02; // red color
 
 
     }
