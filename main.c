@@ -4,23 +4,6 @@
 #include <tm4c123gh6pm.h>
 
 
-
-void GPIO_INIT()
-{
-
-        SYSCTL_RCGCGPIO_R |= 0x10;  //enable clock to portE
-
-       //GPIO_PORTE_LOCK_R = 0X4C4F434B;
-       //GPIO_PORTE_CR_R = 0X1F;
-
-      // GPIO_PORTE_DIR_R = 0x0E;    //set correct directions
-
-       GPIO_PORTE_DEN_R = 0x30;    //enable TxRx operation at pins
-
-       //GPIO_PORTE_PUR_R = 0x11;    //enable pullups for switches
-
-}
-
 void GPIO_PORTF_INIT(void)
 {
     SYSCTL_RCGCGPIO_R |= 0x20;  //enable clock to portf
@@ -38,155 +21,109 @@ void GPIO_PORTF_INIT(void)
 }
 
 
-void UART_INIT(void)
+
+
+void send(char data){
+
+        while((UART0_FR_R & (1<<7)) == 1);
+            UART0_DR_R = data;
+
+}
+
+
+
+char rece(void){
+
+
+        while((UART0_FR_R & (1<<4)) == 1);
+            return  UART0_DR_R;
+
+
+
+}
+
+
+
+void UART_n_GPIO_INIT(void)
 {
 
-
-    /*
-     *
-     *  clock Regs..............
-     *  UARTCC
-     *  UARTCTL....set to zero then set to 1 after configuration
-     */
-
-        //SYSCTL_RCGCUART_R = 0x20;   // choose  UART5 ALREADY CHOOSEN IN MAIN FXN AS ITS CREATES STEP OVER PROBLEM
-
-        UART5_CC_R = 0x0;           // system clock source // check for delayed enable....?
-        UART5_CTL_R = 0x00;      // UARTEN is disabled..
+    GPIO_PORTA_AFSEL_R = 0x03;  // UART is enabled on PA1 and PA0
+    GPIO_PORTA_DEN_R |= 0x03;  // digital fxn is enabled on PA1 and PA0
+    GPIO_PORTA_PCTL_R = 0x11;  // Port mux enabled.
 
 
-    /*
-     *  control Regs...................
-     *  UARTRSR/ECR
-        UARTFR
-        UARTLCRH
-        UARTCTL
-        UARTILPR
-        UART9BITADDR
-        UART9BITAMASK
-        UARTPP
-
-        data Regs....................
-        UARTDR
-
-     *
-     *
-     *
-     *
-     * */
-
-        /* 9600 = f/16 * divisor ----------- 9600*16/f ===  104.1667
-         *
-         *
-                baudRate Regs..............
-                UARTIBRD ===== 104
-                UARTFBRD ===== 0.1667 x 64 + 0.5 ==== 11
-         *
-         *
-         */
-        UART5_IBRD_R = 104;
-        UART5_FBRD_R = 11;
-        UART5_LCRH_R = 0xE2;    // odd parity-one stop bit-fifo dis-8bit len-checkparity as 1
+    UART0_CTL_R = 0x00;      // UARTEN is disabled..
 
 
-        UART5_CTL_R = 0x391;      // UARTEN is enabled, EOT is set ...loopback dis, sys_clk/16, TxRx enabled  //
+                /* 9600 = f/16 * divisor ----------- 9600*16/f ===  104.1667
+                        *
+                        *
+                               baudRate Regs..............
+                               UARTIBRD ===== 104
+                               UARTFBRD ===== 0.1667 x 64 + 0.5 ==== 11
+                        *
+                        *
+                        */
+                 UART0_IBRD_R = 104;
+                 UART0_FBRD_R = 11;
 
 
-    /*  Using UART5 for Transmitting operation
-     *
-     * PE5----->Tx
-     * PE4----->Rx
-     *
-     *
-     * */
-
-    GPIO_PORTE_AFSEL_R = 0x30;  // UART is enabled on PE4 and PE5
-    GPIO_PORTE_PCTL_R  = 0x30;  // encoding is 0x30 for UART5
-    GPIO_PORTE_AMSEL_R = 0x00;    // no analog functions
-
-}
-
-void send(int data){
-
-        while((UART5_FR_R & (1<<5)) != 0);
-            UART5_DR_R = data;
-
-}
+                 UART0_LCRH_R = 0x62;
 
 
-
-int rece(void){
-
-
-        while((UART5_FR_R & (1<<4)) != 0);
-            return  UART5_DR_R;
+                 UART0_CC_R = 0x0;           // system clock source
 
 
-
-
+      UART0_CTL_R = 0x311;      // make 0x301 to remove loopback
 
 
 }
+
+
 void main()
 {
-    /* 0x0F ---> sw1
-     *
-     * 0xAA ---->sw2
-     * */
 
-    int count,des,data = 0x00;
 
-    SYSCTL_RCGCGPIO_R |= 0x20;  //enable clock to portf
-    SYSCTL_RCGCGPIO_R |= 0x10;  //enable clock to portE
-    SYSCTL_RCGCUART_R = 0x20;   // choose  UART5
-
-    GPIO_INIT();
+    SYSCTL_RCGCGPIO_R |= 0x21;  //enable clock to portA and portF
+    SYSCTL_RCGCUART_R = 0x01;   // choose  UART0
+    UART_n_GPIO_INIT();
     GPIO_PORTF_INIT();
-    UART_INIT();
 
+
+   char des;
+
+  // send('i');
+   //send('\n');
 
     while(1){
 
-        count = 0;
-    /*add code for switch press condiotions : input : can also done using interrupt : try later*/
 
-        if((GPIO_PORTF_DATA_R & (1<<0)) == 0)
-        {
+       des = rece();
+       send(des);
 
-            data = 0xAA;    // when sw2 is pressed
-            count  = 1;
+       switch (des)
+       {
+       case 'r':
+           GPIO_PORTF_DATA_R = 0x02;
+           break;
 
+       case 'b':
+           GPIO_PORTF_DATA_R = 0x04;
+           break;
 
-        }
+       case 'g':
+           GPIO_PORTF_DATA_R = 0x08;
+           break;
 
-        if((GPIO_PORTF_DATA_R & (1<<4)) == 0)
-        {
-
-            data = 0xF0;    // when sw1 is pressed
-            count = 1;
-
-
-        }
-
-
-    /*add code for switch press condiotions : input*/
-
-    send(data);     // input
-    des = rece();   // output
+       default:
+           GPIO_PORTF_DATA_R = 0x00;
+            break;
+       }
 
 
-    /* below part added for conditions after signal is received*/
-
-    if(des == 0xAA)
-        GPIO_PORTF_DATA_R = 0x08; // green color
-
-    if(des == 0xF0)
-        GPIO_PORTF_DATA_R = 0x04; // blue color
-
-    if(des != 0xAA && des != 0xF0 && count) // count is used to unkown results only when switches are pressed.
-        GPIO_PORTF_DATA_R = 0x02; // red color
 
 
     }
+
 
 }
